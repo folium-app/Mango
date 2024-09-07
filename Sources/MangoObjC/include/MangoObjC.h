@@ -14,12 +14,22 @@ typedef NS_ENUM(NSUInteger, SNESRomType) {
     SNESRomTypeNTSC = 1
 };
 
-@interface MangoObjC : NSObject
+@interface MangoObjC : NSObject {
+    BOOL isPaused, isRunning;
+}
+
 +(MangoObjC *) sharedInstance NS_SWIFT_NAME(shared());
 
 -(void) insertCartridge:(NSURL *)url NS_SWIFT_NAME(insert(cartridge:));
 
+-(void) reset;
+-(void) stop;
 -(void) step;
+
+-(BOOL) paused;
+-(BOOL) running;
+
+-(void) togglePaused;
 
 -(SNESRomType) type;
 

@@ -48,14 +48,42 @@ static uint8_t* readFile(const char* name, int* length) {
 }
 
 -(void) insertCartridge:(NSURL *)url {
+    if (!mangoEmulator)
+        mangoEmulator = snes_init();
+    
     int length = 0;
     uint8_t* file = readFile([url.path UTF8String], &length);
     snes_loadRom(mangoEmulator, file, length);
     free(file);
+    
+    isPaused = FALSE;
+    isRunning = TRUE;
+}
+
+-(void) reset {
+    snes_reset(mangoEmulator, true);
+}
+
+-(void) stop {
+    isPaused = TRUE;
+    isRunning = FALSE;
+    snes_free(mangoEmulator);
 }
 
 -(void) step {
     snes_runFrame(mangoEmulator);
+}
+
+-(BOOL) paused {
+    return isPaused;
+}
+
+-(BOOL) running {
+    return isRunning;
+}
+
+-(void) togglePaused {
+    isPaused = !isPaused;
 }
 
 -(SNESRomType) type {

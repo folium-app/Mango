@@ -13,8 +13,28 @@ public struct Mango : @unchecked Sendable {
         mangoObjC.insert(cartridge: url)
     }
     
+    public func reset() {
+        mangoObjC.reset()
+    }
+    
+    public func stop() {
+        mangoObjC.stop()
+    }
+    
     public func step() {
         mangoObjC.step()
+    }
+    
+    public func paused() -> Bool {
+        mangoObjC.paused()
+    }
+    
+    public func running() -> Bool {
+        mangoObjC.running()
+    }
+    
+    public func togglePaused() {
+        mangoObjC.togglePaused()
     }
     
     public func type() -> SNESRomType {
