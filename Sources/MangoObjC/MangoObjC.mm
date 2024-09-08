@@ -15,11 +15,11 @@
 
 Snes* mangoEmulator;
 
-static uint8_t* readFile(const char* name, int* length) {
+static uint8_t* readFile(const char* name, long* length) {
     FILE* f = fopen(name, "rb");
     if(f == NULL) return NULL;
     fseek(f, 0, SEEK_END);
-    int size = ftell(f);
+    long size = ftell(f);
     rewind(f);
     uint8_t* buffer = new uint8_t[size];
     if(fread(buffer, size, 1, f) != 1) {
@@ -51,9 +51,9 @@ static uint8_t* readFile(const char* name, int* length) {
     if (!mangoEmulator)
         mangoEmulator = snes_init();
     
-    int length = 0;
+    long length = 0;
     uint8_t* file = readFile([url.path UTF8String], &length);
-    snes_loadRom(mangoEmulator, file, length);
+    snes_loadRom(mangoEmulator, file, (int)length);
     free(file);
     
     isPaused = FALSE;
@@ -104,7 +104,7 @@ static uint8_t* readFile(const char* name, int* length) {
 
 -(NSString *) titleForCartridgeAtURL:(NSURL *)url {
     CartHeader headers[6]{};
-    int length = 0;
+    long length = 0;
     uint8_t* file = readFile([url.path UTF8String], &length);
     
     for(int i = 0; i < 6; i++) {
@@ -112,17 +112,17 @@ static uint8_t* readFile(const char* name, int* length) {
     }
     
     if(length >= 0x8000)
-        readHeader(file, length, 0x7fc0, &headers[0]); // lorom
+        readHeader(file, (int)length, 0x7fc0, &headers[0]); // lorom
     if(length >= 0x8200)
-        readHeader(file, length, 0x81c0, &headers[1]); // lorom + header
+        readHeader(file, (int)length, 0x81c0, &headers[1]); // lorom + header
     if(length >= 0x10000)
-        readHeader(file, length, 0xffc0, &headers[2]); // hirom
+        readHeader(file, (int)length, 0xffc0, &headers[2]); // hirom
     if(length >= 0x10200)
-        readHeader(file, length, 0x101c0, &headers[3]); // hirom + header
+        readHeader(file, (int)length, 0x101c0, &headers[3]); // hirom + header
     if(length >= 0x410000)
-        readHeader(file, length, 0x40ffc0, &headers[4]); // exhirom
+        readHeader(file, (int)length, 0x40ffc0, &headers[4]); // exhirom
     if(length >= 0x410200)
-        readHeader(file, length, 0x4101c0, &headers[5]); // exhirom + header
+        readHeader(file, (int)length, 0x4101c0, &headers[5]); // exhirom + header
     
     free(file);
     
