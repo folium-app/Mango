@@ -10,7 +10,7 @@
 #include "statehandler.h"
 
 Input* input_init(Snes* snes) {
-  Input* input = new Input;
+  Input* input = (Input*)malloc(sizeof(Input));
   input->snes = snes;
   // TODO: handle (where?)
   input->type = 1;

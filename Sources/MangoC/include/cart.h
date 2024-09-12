@@ -36,6 +36,7 @@ typedef struct CartHeader {
   int16_t score; // score for header, to see which mapping is most likely
   bool pal; // if this is a rom for PAL regions instead of NTSC
   uint8_t cartType; // calculated type
+  bool hasBattery; // battery
 } CartHeader;
 
 void readHeader(const uint8_t* data, int length, int location, CartHeader* header);
@@ -43,6 +44,7 @@ void readHeader(const uint8_t* data, int length, int location, CartHeader* heade
 struct Cart {
   Snes* snes;
   uint8_t type;
+  bool hasBattery;
 
   uint8_t* rom;
   uint32_t romSize;
@@ -57,7 +59,7 @@ void cart_free(Cart* cart);
 void cart_reset(Cart* cart); // will reset special chips etc, general reading is set up in load
 bool cart_handleTypeState(Cart* cart, StateHandler* sh);
 void cart_handleState(Cart* cart, StateHandler* sh);
-void cart_load(Cart* cart, int type, uint8_t* rom, int romSize, int ramSize); // loads rom, sets up ram buffer
+void cart_load(Cart* cart, int type, uint8_t* rom, int romSize, int ramSize, bool hasBattery); // loads rom, sets up ram buffer
 bool cart_handleBattery(Cart* cart, bool save, uint8_t* data, int* size); // saves/loads ram
 uint8_t cart_read(Cart* cart, uint8_t bank, uint16_t adr);
 void cart_write(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val);

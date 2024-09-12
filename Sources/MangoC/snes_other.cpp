@@ -50,7 +50,7 @@ bool snes_loadRom(Snes* snes, const uint8_t* data, int length) {
     length -= 0x200; // and subtract from size
   }
   // check if we can load it
-  if(headers[used].cartType > 3) {
+  if(headers[used].cartType > 4) {
     printf("Failed to load rom: unsupported type (%d)\n", headers[used].cartType);
     return false;
   }
@@ -62,7 +62,7 @@ bool snes_loadRom(Snes* snes, const uint8_t* data, int length) {
     }
     newLength *= 2;
   }
-  uint8_t* newData = new uint8_t[newLength];
+  uint8_t* newData = (uint8_t*)malloc(newLength);
   memcpy(newData, data, length);
   int test = 1;
   while(length != newLength) {
@@ -72,19 +72,32 @@ bool snes_loadRom(Snes* snes, const uint8_t* data, int length) {
     }
     test *= 2;
   }
+  // coprocessor check
+  if (headers[used].exCoprocessor == 0x10) {
+    headers[used].cartType = 4; // cx4
+  }
   // load it
-  const char* typeNames[4] = {"(none)", "LoROM", "HiROM", "ExHiROM"};
+  const char* typeNames[5] = {"(none)", "LoROM", "HiROM", "ExHiROM", "CX4"};
   printf("Loaded %s rom (%s)\n", typeNames[headers[used].cartType], headers[used].pal ? "PAL" : "NTSC");
   printf("\"%s\"\n", headers[used].name);
   int bankSize = used >= 2 ? 0x10000 : 0x8000; // 0, 1: LoROM, else HiROM
   printf(
-    "%s banks: %d, ramsize: %d\n",
-    bankSize == 0x8000 ? "32K" : "64K", newLength / bankSize, headers[used].chips > 0 ? headers[used].ramSize : 0
+    "%s banks: %d, ramsize: %d%s, coprocessor: %x\n",
+    bankSize == 0x8000 ? "32K" : "64K", newLength / bankSize, headers[used].chips > 0 ? headers[used].ramSize : 0, (headers[used].hasBattery) ? " (battery-backed)" : "", headers[used].exCoprocessor
   );
   cart_load(
     snes->cart, headers[used].cartType,
-    newData, newLength, headers[used].chips > 0 ? headers[used].ramSize : 0
+    newData, newLength, headers[used].chips > 0 ? headers[used].ramSize : 0,
+    headers[used].hasBattery
   );
+  // -- cart specific config --
+  snes->ramFill = 0x00; // default, 0-fill
+  if (!strcmp(headers[used].name, "DEATH BRADE") || !strcmp(headers[used].name, "POWERDRIVE")) {
+    snes->ramFill = 0xff;
+  }
+  if (!strcmp(headers[used].name, "ASHITANO JOE") || !strcmp(headers[used].name, "SUCCESS JOE")) {
+    snes->ramFill = 0x3f; // game prefers 0x3f fill
+  }
   snes_reset(snes, true); // reset after loading
   snes->palTiming = headers[used].pal; // set region
   free(newData);
@@ -106,11 +119,6 @@ void snes_setButtonState(Snes* snes, int player, int button, bool pressed) {
       snes->input2->currentState &= ~(1 << button);
     }
   }
-}
-
-void snes_setPixelFormat(Snes* snes, int pixelFormat) {
-  // pixelFormatXRGB, pixelFormatRGBX (default: pixelFormatRGBX)
-  ppu_setPixelOutputFormat(snes->ppu, (pixelFormat) ? ppu_pixelOutputFormatBGRX : ppu_pixelOutputFormatXBGR);
 }
 
 void snes_setPixels(Snes* snes, uint8_t* pixelData) {
@@ -177,11 +185,18 @@ void readHeader(const uint8_t* data, int length, int location, CartHeader* heade
     }
   }
   header->name[21] = 0;
+  // clean name (strip end space)
+  int slen = strlen(header->name);
+  while (slen > 0 && header->name[slen-1] == ' ') {
+	  header->name[slen-1] = '\0';
+	  slen--;
+  }
   // read rest
   header->speed = data[location + 0x15] >> 4;
   header->type = data[location + 0x15] & 0xf;
   header->coprocessor = data[location + 0x16] >> 4;
   header->chips = data[location + 0x16] & 0xf;
+  header->hasBattery = (header->chips == 0x02 || header->chips == 0x05 || header->chips == 0x06);
   header->romSize = 0x400 << data[location + 0x17];
   header->ramSize = 0x400 << data[location + 0x18];
   header->region = data[location + 0x19];

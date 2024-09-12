@@ -28,20 +28,22 @@ struct Snes {
   // ram
   uint8_t ram[0x20000];
   uint32_t ramAdr;
+  uint8_t ramFill;
   // frame timing
   uint16_t hPos;
   uint16_t vPos;
   uint32_t frames;
   uint64_t cycles;
   uint64_t syncCycle;
+  uint32_t nextHoriEvent;
   // cpu handling
-  double apuCatchupCycles;
   // nmi / irq
   bool hIrqEnabled;
   bool vIrqEnabled;
   bool nmiEnabled;
   uint16_t hTimer;
   uint16_t vTimer;
+  uint32_t hvTimer;
   bool inNmi;
   bool irqCondition;
   bool inIrq;
@@ -61,7 +63,7 @@ struct Snes {
   uint8_t openBus;
 };
 
-Snes* snes_init();
+Snes* snes_init(void);
 void snes_free(Snes* snes);
 void snes_reset(Snes* snes, bool hard);
 void snes_handleState(Snes* snes, StateHandler* sh);
@@ -82,11 +84,8 @@ void snes_runSpcCycle(Snes* snes);
 
 // snes_other.c functions:
 
-enum { pixelFormatXRGB = 0, pixelFormatRGBX = 1 };
-
 bool snes_loadRom(Snes* snes, const uint8_t* data, int length);
 void snes_setButtonState(Snes* snes, int player, int button, bool pressed);
-void snes_setPixelFormat(Snes* snes, int pixelFormat);
 void snes_setPixels(Snes* snes, uint8_t* pixelData);
 void snes_setSamples(Snes* snes, int16_t* sampleData, int samplesPerFrame);
 int snes_saveBattery(Snes* snes, uint8_t* data);

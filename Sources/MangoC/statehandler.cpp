@@ -12,16 +12,16 @@ static void sh_writeByte(StateHandler* sh, uint8_t val);
 static uint8_t sh_readByte(StateHandler* sh);
 
 StateHandler* sh_init(bool saving, const uint8_t* data, int size) {
-  StateHandler* sh = new StateHandler;
+  StateHandler* sh = (StateHandler*)malloc(sizeof(StateHandler));
   sh->saving = saving;
   sh->offset = 0;
   if(!saving) {
-    sh->data = new uint8_t[size];
+    sh->data = (uint8_t*)malloc(size);
     memcpy(sh->data, data, size);
     sh->allocSize = size;
   } else {
-    sh->data = new uint8_t[1024];
-    sh->allocSize = 1024;
+    sh->data = (uint8_t*)malloc(512 * 1024);
+    sh->allocSize = 512 * 1024;
   }
   return sh;
 }

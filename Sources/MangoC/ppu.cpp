@@ -61,10 +61,21 @@ static const int spriteSizes[8][2] = {
   {16, 64}, {32, 64}, {16, 32}, {16, 32}
 };
 
+// caches & luts to reduce cpu load
+static uint32_t bright_lut[0x10];
+static uint32_t bright_now;
+static uint8_t color_clamp_lut[0x20 * 3];
+static uint8_t *color_clamp_lut_i20 = &color_clamp_lut[0x20];
+
+static int layerCache[4] = { -1, -1, -1, -1 };
+static uint16_t bg_pixel_buf[4];
+static uint8_t bg_prio_buf[4];
+static bool bg_window_state[6]; // 0-3 (bg) 4 (spr) 5 (colorwind)
+
 static void ppu_handlePixel(Ppu* ppu, int x, int y);
 static int ppu_getPixel(Ppu* ppu, int x, int y, bool sub, int* r, int* g, int* b);
 static uint16_t ppu_getOffsetValue(Ppu* ppu, int col, int row);
-static int ppu_getPixelForBgLayer(Ppu* ppu, int x, int y, int layer, bool priority);
+static inline void ppu_getPixelForBgLayer(Ppu* ppu, int x, int y, int layer);
 static void ppu_handleOPT(Ppu* ppu, int layer, int* lx, int* ly);
 static void ppu_calculateMode7Starts(Ppu* ppu, int y);
 static int ppu_getPixelForMode7(Ppu* ppu, int x, int layer, bool priority);
@@ -73,9 +84,8 @@ static void ppu_evaluateSprites(Ppu* ppu, int line);
 static uint16_t ppu_getVramRemap(Ppu* ppu);
 
 Ppu* ppu_init(Snes* snes) {
-  Ppu* ppu = new Ppu;
+  Ppu* ppu = (Ppu*)malloc(sizeof(Ppu));
   ppu->snes = snes;
-    ppu_setPixelOutputFormat(ppu, ppu_pixelOutputFormatBGRX);
   return ppu;
 }
 
@@ -84,6 +94,23 @@ void ppu_free(Ppu* ppu) {
 }
 
 void ppu_reset(Ppu* ppu) {
+  // create brightness and color clamp LUTs (rendering opti)
+  for (int i = 0; i < 0x10; i++) {
+    bright_lut[i] = (i * 0x10000) / 15;
+  }
+  for (int i = 0; i < 0x20*3; i++) {
+    if (i < 0x20) {
+      color_clamp_lut[i] = 0;
+    }
+    if (i >= 0x20 && i <= 0x3f) {
+      color_clamp_lut[i] = i - 0x20; // 0 - 1f
+    }
+    if (i >= 0x40) {
+      color_clamp_lut[i] = 0x1f;
+    }
+  }
+  bright_now = bright_lut[0xf]; // default
+
   memset(ppu->vram, 0, sizeof(ppu->vram));
   ppu->vramPointer = 0;
   ppu->vramIncrementOnHigh = false;
@@ -266,15 +293,16 @@ void ppu_runLine(Ppu* ppu, int line) {
   // evaluate sprites
   memset(ppu->objPixelBuffer, 0, sizeof(ppu->objPixelBuffer));
   if(!ppu->forcedBlank) ppu_evaluateSprites(ppu, line - 1);
+  // NOTE: if frameskipping, return here. (ppu_evaluateSprites() must run regardless)
   // actual line
   if(ppu->mode == 7) ppu_calculateMode7Starts(ppu, line);
-  for(int x = 0; x < 256; x++) {
-    ppu_handlePixel(ppu, x, line);
+  layerCache[0] = layerCache[1] = layerCache[2] = layerCache[3] = -1;
+  for(int x = 0; x < 256; x+=4) {
+    ppu_handlePixel(ppu, x + 0, line);
+    ppu_handlePixel(ppu, x + 1, line);
+    ppu_handlePixel(ppu, x + 2, line);
+    ppu_handlePixel(ppu, x + 3, line);
   }
-}
-
-void ppu_setPixelOutputFormat(Ppu* ppu, int pixelOutputFormat) {
-  ppu->pixelOutputFormat = pixelOutputFormat;
 }
 
 static void ppu_handlePixel(Ppu* ppu, int x, int y) {
@@ -331,13 +359,14 @@ static void ppu_handlePixel(Ppu* ppu, int x, int y) {
     }
   }
   int row = (y - 1) + (ppu->evenFrame ? 0 : 239);
-  ppu->pixelBuffer[row * 2048 + x * 8 + 0 + ppu->pixelOutputFormat] = ((b2 << 3) | (b2 >> 2)) * ppu->brightness / 15;
-  ppu->pixelBuffer[row * 2048 + x * 8 + 1 + ppu->pixelOutputFormat] = ((g2 << 3) | (g2 >> 2)) * ppu->brightness / 15;
-  ppu->pixelBuffer[row * 2048 + x * 8 + 2 + ppu->pixelOutputFormat] = ((r2 << 3) | (r2 >> 2)) * ppu->brightness / 15;
-  ppu->pixelBuffer[row * 2048 + x * 8 + 4 + ppu->pixelOutputFormat] = ((b << 3) | (b >> 2)) * ppu->brightness / 15;
-  ppu->pixelBuffer[row * 2048 + x * 8 + 5 + ppu->pixelOutputFormat] = ((g << 3) | (g >> 2)) * ppu->brightness / 15;
-  ppu->pixelBuffer[row * 2048 + x * 8 + 6 + ppu->pixelOutputFormat] = ((r << 3) | (r >> 2)) * ppu->brightness / 15;
+  ppu->pixelBuffer[row * 2048 + x * 8 + 0 + 1] = ((b2 << 3) | (b2 >> 2)) * ppu->brightness / 15;
+  ppu->pixelBuffer[row * 2048 + x * 8 + 1 + 1] = ((g2 << 3) | (g2 >> 2)) * ppu->brightness / 15;
+  ppu->pixelBuffer[row * 2048 + x * 8 + 2 + 1] = ((r2 << 3) | (r2 >> 2)) * ppu->brightness / 15;
+  ppu->pixelBuffer[row * 2048 + x * 8 + 4 + 1] = ((b << 3) | (b >> 2)) * ppu->brightness / 15;
+  ppu->pixelBuffer[row * 2048 + x * 8 + 5 + 1] = ((g << 3) | (g >> 2)) * ppu->brightness / 15;
+  ppu->pixelBuffer[row * 2048 + x * 8 + 6 + 1] = ((r << 3) | (r >> 2)) * ppu->brightness / 15;
 }
+
 
 static int ppu_getPixel(Ppu* ppu, int x, int y, bool sub, int* r, int* g, int* b) {
   // figure out which color is on this location on main- or subscreen, sets it in r, g, b
@@ -352,11 +381,11 @@ static int ppu_getPixel(Ppu* ppu, int x, int y, bool sub, int* r, int* g, int* b
     bool layerActive = false;
     if(!sub) {
       layerActive = ppu->layer[curLayer].mainScreenEnabled && (
-        !ppu->layer[curLayer].mainScreenWindowed || !ppu_getWindowState(ppu, curLayer, x)
+        !ppu->layer[curLayer].mainScreenWindowed || !bg_window_state[curLayer]
       );
     } else {
       layerActive = ppu->layer[curLayer].subScreenEnabled && (
-        !ppu->layer[curLayer].subScreenWindowed || !ppu_getWindowState(ppu, curLayer, x)
+        !ppu->layer[curLayer].subScreenWindowed || !bg_window_state[curLayer]
       );
     }
     if(layerActive) {
@@ -384,10 +413,11 @@ static int ppu_getPixel(Ppu* ppu, int x, int y, bool sub, int* r, int* g, int* b
           if(ppu->mode == 2 || ppu->mode == 4 || ppu->mode == 6) {
             ppu_handleOPT(ppu, curLayer, &lx, &ly);
           }
-          pixel = ppu_getPixelForBgLayer(
-            ppu, lx & 0x3ff, ly & 0x3ff,
-            curLayer, curPriority
-          );
+          if (lx != layerCache[curLayer]) {
+            ppu_getPixelForBgLayer(ppu, lx & 0x3ff, ly & 0x3ff, curLayer);
+            layerCache[curLayer] = lx;
+          }
+          pixel = (bg_prio_buf[curLayer] == curPriority) ? bg_pixel_buf[curLayer] : 0;
         }
       } else {
         // get a pixel from the sprite buffer
@@ -458,7 +488,7 @@ static uint16_t ppu_getOffsetValue(Ppu* ppu, int col, int row) {
   return ppu->vram[tilemapAdr & 0x7fff];
 }
 
-static int ppu_getPixelForBgLayer(Ppu* ppu, int x, int y, int layer, bool priority) {
+static inline void ppu_getPixelForBgLayer(Ppu* ppu, int x, int y, int layer) {
   // figure out address of tilemap word and read it
   bool wideTiles = ppu->bgLayer[layer].bigTiles || ppu->mode == 5 || ppu->mode == 6;
   int tileBitsX = wideTiles ? 4 : 3;
@@ -470,7 +500,7 @@ static int ppu_getPixelForBgLayer(Ppu* ppu, int x, int y, int layer, bool priori
   if((y & tileHighBitY) && ppu->bgLayer[layer].tilemapHigher) tilemapAdr += ppu->bgLayer[layer].tilemapWider ? 0x800 : 0x400;
   uint16_t tile = ppu->vram[tilemapAdr & 0x7fff];
   // check priority, get palette
-  if(((bool) (tile & 0x2000)) != priority) return 0; // wrong priority
+  int tilePrio = (tile >> 13) & 1;
   int paletteNum = (tile & 0x1c00) >> 10;
   // figure out position within tile
   int row = (tile & 0x8000) ? 7 - (y & 0x7) : (y & 0x7);
@@ -488,29 +518,45 @@ static int ppu_getPixelForBgLayer(Ppu* ppu, int x, int y, int layer, bool priori
   int bitDepth = bitDepthsPerMode[ppu->mode][layer];
   if(ppu->mode == 0) paletteNum += 8 * layer;
   // plane 1 (always)
-  int paletteSize = 4;
-  uint16_t plane1 = ppu->vram[(ppu->bgLayer[layer].tileAdr + ((tileNum & 0x3ff) * 4 * bitDepth) + row) & 0x7fff];
-  int pixel = (plane1 >> col) & 1;
-  pixel |= ((plane1 >> (8 + col)) & 1) << 1;
-  // plane 2 (for 4bpp, 8bpp)
-  if(bitDepth > 2) {
-    paletteSize = 16;
-    uint16_t plane2 = ppu->vram[(ppu->bgLayer[layer].tileAdr + ((tileNum & 0x3ff) * 4 * bitDepth) + 8 + row) & 0x7fff];
-    pixel |= ((plane2 >> col) & 1) << 2;
-    pixel |= ((plane2 >> (8 + col)) & 1) << 3;
-  }
-  // plane 3 & 4 (for 8bpp)
-  if(bitDepth > 4) {
-    paletteSize = 256;
-    uint16_t plane3 = ppu->vram[(ppu->bgLayer[layer].tileAdr + ((tileNum & 0x3ff) * 4 * bitDepth) + 16 + row) & 0x7fff];
-    pixel |= ((plane3 >> col) & 1) << 4;
-    pixel |= ((plane3 >> (8 + col)) & 1) << 5;
-    uint16_t plane4 = ppu->vram[(ppu->bgLayer[layer].tileAdr + ((tileNum & 0x3ff) * 4 * bitDepth) + 24 + row) & 0x7fff];
-    pixel |= ((plane4 >> col) & 1) << 6;
-    pixel |= ((plane4 >> (8 + col)) & 1) << 7;
+  const uint16_t base_addr = ppu->bgLayer[layer].tileAdr + ((tileNum & 0x3ff) * 4 * bitDepth);
+  const int bit2shift = 8 + col;
+  int pixel = 0;
+  switch (bitDepth) {
+    case 2: {
+        uint16_t plane = ppu->vram[(base_addr + row) & 0x7fff];
+        pixel = (plane >> col) & 1;
+        pixel |= ((plane >> bit2shift) & 1) << 1;
+    } break;
+    case 4: {
+        uint16_t plane = ppu->vram[(base_addr + row) & 0x7fff];
+        pixel = (plane >> col) & 1;
+        pixel |= ((plane >> bit2shift) & 1) << 1;
+
+        plane = ppu->vram[(base_addr + 8 + row) & 0x7fff];
+        pixel |= ((plane >> col) & 1) << 2;
+        pixel |= ((plane >> bit2shift) & 1) << 3;
+    } break;
+    case 8: {
+        uint16_t plane = ppu->vram[(base_addr + row) & 0x7fff];
+        pixel = (plane >> col) & 1;
+        pixel |= ((plane >> bit2shift) & 1) << 1;
+
+        plane = ppu->vram[(base_addr + 8 + row) & 0x7fff];
+        pixel |= ((plane >> col) & 1) << 2;
+        pixel |= ((plane >> bit2shift) & 1) << 3;
+
+        plane = ppu->vram[(base_addr + 16 + row) & 0x7fff];
+        pixel |= ((plane >> col) & 1) << 4;
+        pixel |= ((plane >> bit2shift) & 1) << 5;
+
+        plane = ppu->vram[(base_addr + 24 + row) & 0x7fff];
+        pixel |= ((plane >> col) & 1) << 6;
+        pixel |= ((plane >> bit2shift) & 1) << 7;
+    } break;
   }
   // return cgram index, or 0 if transparent, palette number in bits 10-8 for 8-color layers
-  return pixel == 0 ? 0 : paletteSize * paletteNum + pixel;
+  bg_pixel_buf[layer] = (pixel == 0) ? 0 : (paletteNum << bitDepth) + pixel;
+  bg_prio_buf[layer] = tilePrio;
 }
 
 static void ppu_calculateMode7Starts(Ppu* ppu, int y) {
@@ -585,7 +631,7 @@ static bool ppu_getWindowState(Ppu* ppu, int layer, int x) {
 }
 
 static void ppu_evaluateSprites(Ppu* ppu, int line) {
-  // TODO: rectangular sprites, wierdness with sprites at -256
+  // TODO: rectangular sprites
   uint8_t index = ppu->objPriority ? (ppu->oamAdr & 0xfe) : 0;
   int spritesFound = 0;
   int tilesFound = 0;
@@ -603,7 +649,7 @@ static void ppu_evaluateSprites(Ppu* ppu, int line) {
       x |= ((ppu->highOam[index >> 3] >> (index & 7)) & 1) << 8;
       if(x > 255) x -= 512;
       // if in x-range, record
-      if(x > -spriteSize) {
+      if(x > -spriteSize || x == -256) {
         // break if we found 32 sprites already
         spritesFound++;
         if(spritesFound > 32) {
@@ -680,6 +726,12 @@ static uint16_t ppu_getVramRemap(Ppu* ppu) {
   return adr;
 }
 
+void ppu_latchHV(Ppu* ppu) {
+  ppu->hCount = ppu->snes->hPos / 4;
+  ppu->vCount = ppu->snes->vPos;
+  ppu->countersLatched = true;
+}
+
 uint8_t ppu_read(Ppu* ppu, uint8_t adr) {
   switch(adr) {
     case 0x04: case 0x14: case 0x24:
@@ -698,10 +750,9 @@ uint8_t ppu_read(Ppu* ppu, uint8_t adr) {
       return ppu->ppu1openBus;
     }
     case 0x37: {
-      // TODO: only when ppulatch is set
-      ppu->hCount = ppu->snes->hPos / 4;
-      ppu->vCount = ppu->snes->vPos;
-      ppu->countersLatched = true;
+      if(ppu->snes->ppuLatch) {
+        ppu_latchHV(ppu);
+      }
       return ppu->snes->openBus;
     }
     case 0x38: {
@@ -789,9 +840,11 @@ uint8_t ppu_read(Ppu* ppu, uint8_t adr) {
       val |= ppu->ppu2openBus & 0x20;
       val |= ppu->countersLatched << 6;
       val |= ppu->evenFrame << 7;
-      ppu->countersLatched = false; // TODO: only when ppulatch is set
-      ppu->hCountSecond = false;
-      ppu->vCountSecond = false;
+      if(ppu->snes->ppuLatch) {
+        ppu->countersLatched = false;
+        ppu->hCountSecond = false;
+        ppu->vCountSecond = false;
+      }
       ppu->ppu2openBus = val;
       return val;
     }
@@ -806,6 +859,7 @@ void ppu_write(Ppu* ppu, uint8_t adr, uint8_t val) {
     case 0x00: {
       // TODO: oam address reset when written on first line of vblank, (and when forced blank is disabled?)
       ppu->brightness = val & 0xf;
+      bright_now = bright_lut[ppu->brightness];
       ppu->forcedBlank = val & 0x80;
       break;
     }
@@ -934,15 +988,18 @@ void ppu_write(Ppu* ppu, uint8_t adr, uint8_t val) {
       break;
     }
     case 0x18: {
-      // TODO: vram access during rendering (also cgram and oam)
       uint16_t vramAdr = ppu_getVramRemap(ppu);
-      ppu->vram[vramAdr & 0x7fff] = (ppu->vram[vramAdr & 0x7fff] & 0xff00) | val;
+	  if (ppu->forcedBlank || ppu->snes->inVblank) { // TODO: also cgram and oam?
+		ppu->vram[vramAdr & 0x7fff] = (ppu->vram[vramAdr & 0x7fff] & 0xff00) | val;
+	  }
       if(!ppu->vramIncrementOnHigh) ppu->vramPointer += ppu->vramIncrement;
       break;
     }
     case 0x19: {
       uint16_t vramAdr = ppu_getVramRemap(ppu);
-      ppu->vram[vramAdr & 0x7fff] = (ppu->vram[vramAdr & 0x7fff] & 0x00ff) | (val << 8);
+	  if (ppu->forcedBlank || ppu->snes->inVblank) {
+		ppu->vram[vramAdr & 0x7fff] = (ppu->vram[vramAdr & 0x7fff] & 0x00ff) | (val << 8);
+	  }
       if(ppu->vramIncrementOnHigh) ppu->vramPointer += ppu->vramIncrement;
       break;
     }

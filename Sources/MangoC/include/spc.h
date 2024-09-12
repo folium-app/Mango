@@ -14,39 +14,39 @@ typedef void (*SpcIdleHandler)(void* mem, bool waiting);
 typedef struct Spc Spc;
 
 struct Spc {
-    // reference to memory handler, pointers to read/write/idle handlers
-    void* mem;
-    SpcReadHandler read;
-    SpcWriteHandler write;
-    SpcIdleHandler idle;
-    // registers
-    uint8_t a;
-    uint8_t x;
-    uint8_t y;
-    uint8_t sp;
-    uint16_t pc;
-    // flags
-    bool c;
-    bool z;
-    bool v;
-    bool n;
-    bool i;
-    bool h;
-    bool p;
-    bool b;
-    // stopping
-    bool stopped;
-    // reset
-    bool resetWanted;
-    // single-cycle
-    uint8_t opcode;
-    uint32_t step;
-    uint32_t bstep;
-    uint16_t adr;
-    uint16_t adr1;
-    uint8_t dat;
-    uint16_t dat16;
-    uint8_t param;
+  // reference to memory handler, pointers to read/write/idle handlers
+  void* mem;
+  SpcReadHandler read;
+  SpcWriteHandler write;
+  SpcIdleHandler idle;
+  // registers
+  uint8_t a;
+  uint8_t x;
+  uint8_t y;
+  uint8_t sp;
+  uint16_t pc;
+  // flags
+  bool c;
+  bool z;
+  bool v;
+  bool n;
+  bool i;
+  bool h;
+  bool p;
+  bool b;
+  // stopping
+  bool stopped;
+  // reset
+  bool resetWanted;
+  // single-cycle
+  uint8_t opcode;
+  uint32_t step;
+  uint32_t bstep;
+  uint16_t adr;
+  uint16_t adr1;
+  uint8_t dat;
+  uint16_t dat16;
+  uint8_t param;
 };
 
 Spc* spc_init(void* mem, SpcReadHandler read, SpcWriteHandler write, SpcIdleHandler idle);

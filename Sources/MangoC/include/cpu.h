@@ -14,39 +14,39 @@ typedef void (*CpuIdleHandler)(void* mem, bool waiting);
 typedef struct Cpu Cpu;
 
 struct Cpu {
-    // reference to memory handler, pointers to read/write/idle handlers
-    void* mem;
-    CpuReadHandler read;
-    CpuWriteHandler write;
-    CpuIdleHandler idle;
-    // registers
-    uint16_t a;
-    uint16_t x;
-    uint16_t y;
-    uint16_t sp;
-    uint16_t pc;
-    uint16_t dp; // direct page (D)
-    uint8_t k; // program bank (PB)
-    uint8_t db; // data bank (B)
-    // flags
-    bool c;
-    bool z;
-    bool v;
-    bool n;
-    bool i;
-    bool d;
-    bool xf;
-    bool mf;
-    bool e;
-    // power state (WAI/STP)
-    bool waiting;
-    bool stopped;
-    // interrupts
-    bool irqWanted;
-    bool nmiWanted;
-    bool intWanted;
-    bool intDelay;
-    bool resetWanted;
+  // reference to memory handler, pointers to read/write/idle handlers
+  void* mem;
+  CpuReadHandler read;
+  CpuWriteHandler write;
+  CpuIdleHandler idle;
+  // registers
+  uint16_t a;
+  uint16_t x;
+  uint16_t y;
+  uint16_t sp;
+  uint16_t pc;
+  uint16_t dp; // direct page (D)
+  uint8_t k; // program bank (PB)
+  uint8_t db; // data bank (B)
+  // flags
+  bool c;
+  bool z;
+  bool v;
+  bool n;
+  bool i;
+  bool d;
+  bool xf;
+  bool mf;
+  bool e;
+  // power state (WAI/STP)
+  bool waiting;
+  bool stopped;
+  // interrupts
+  bool irqWanted;
+  bool nmiWanted;
+  bool intWanted;
+  bool intDelay;
+  bool resetWanted;
 };
 
 Cpu* cpu_init(void* mem, CpuReadHandler read, CpuWriteHandler write, CpuIdleHandler idle);

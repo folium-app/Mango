@@ -67,7 +67,7 @@ static int16_t dsp_getSample(Dsp* dsp, int ch);
 static void dsp_handleNoise(Dsp* dsp);
 
 Dsp* dsp_init(Apu* apu) {
-  Dsp* dsp = new Dsp;
+  Dsp* dsp = (Dsp*)malloc(sizeof(Dsp));
   dsp->apu = apu;
   return dsp;
 }
@@ -135,6 +135,11 @@ void dsp_reset(Dsp* dsp) {
   memset(dsp->firBufferR, 0, sizeof(dsp->firBufferR));
   memset(dsp->sampleBuffer, 0, sizeof(dsp->sampleBuffer));
   dsp->sampleOffset = 0;
+  dsp->lastFrameBoundary = 0;
+}
+
+void dsp_newFrame(Dsp* dsp) {
+  dsp->lastFrameBoundary = dsp->sampleOffset;
 }
 
 void dsp_handleState(Dsp* dsp, StateHandler* sh) {
@@ -191,7 +196,7 @@ void dsp_cycle(Dsp* dsp) {
     dsp_cycleChannel(dsp, i);
   }
   dsp_handleEcho(dsp); // also applies master volume
-  dsp->counter = dsp->counter == 0 ? 30720 : dsp->counter - 1;
+  dsp->counter = dsp->counter == 0 ? 30720 - 1 : dsp->counter - 1;
   dsp_handleNoise(dsp);
   dsp->evenCycle = !dsp->evenCycle;
   // handle mute flag
@@ -200,8 +205,8 @@ void dsp_cycle(Dsp* dsp) {
     dsp->sampleOutR = 0;
   }
   // put final sample in the samplebuffer
-  dsp->sampleBuffer[(dsp->sampleOffset & 0x3ff) * 2] = dsp->sampleOutL;
-  dsp->sampleBuffer[(dsp->sampleOffset++ & 0x3ff) * 2 + 1] = dsp->sampleOutR;
+  dsp->sampleBuffer[(dsp->sampleOffset & 0x7ff) * 2] = dsp->sampleOutL;
+  dsp->sampleBuffer[(dsp->sampleOffset++ & 0x7ff) * 2 + 1] = dsp->sampleOutR;
 }
 
 static int clamp16(int val) {
@@ -282,7 +287,6 @@ static void dsp_cycleChannel(Dsp* dsp, int ch) {
       dsp->channel[ch].blockOffset = 1;
       dsp->channel[ch].bufferOffset = 0;
       dsp->channel[ch].brrHeader = 0;
-      dsp->ram[0x7c] &= ~(1 << ch); // clear ENDx
     }
     dsp->channel[ch].gain = 0;
     dsp->channel[ch].startDelay--;
@@ -314,6 +318,7 @@ static void dsp_cycleChannel(Dsp* dsp, int ch) {
       dsp->channel[ch].startDelay = 5;
       dsp->channel[ch].adsrState = 0; // go to attack
       dsp->channel[ch].keyOn = false;
+      dsp->ram[0x7c] &= ~(1 << ch); // clear ENDx
     }
   }
   // handle envelope
@@ -585,10 +590,10 @@ void dsp_getSamples(Dsp* dsp, int16_t* sampleData, int samplesPerFrame) {
   // resample from 534 / 641 samples per frame to wanted value
   float wantedSamples = (dsp->apu->snes->palTiming ? 641.0 : 534.0);
   double adder = wantedSamples / samplesPerFrame;
-  double location = dsp->sampleOffset - wantedSamples;
+  double location = dsp->lastFrameBoundary - wantedSamples;
   for(int i = 0; i < samplesPerFrame; i++) {
-    sampleData[i * 2] = dsp->sampleBuffer[(((int) location) & 0x3ff) * 2];
-    sampleData[i * 2 + 1] = dsp->sampleBuffer[(((int) location) & 0x3ff) * 2 + 1];
+    sampleData[i * 2] = dsp->sampleBuffer[(((int) location) & 0x7ff) * 2];
+    sampleData[i * 2 + 1] = dsp->sampleBuffer[(((int) location) & 0x7ff) * 2 + 1];
     location += adder;
   }
 }

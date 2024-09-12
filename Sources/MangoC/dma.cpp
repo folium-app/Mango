@@ -31,7 +31,7 @@ static void dma_initHdma(Dma* dma, bool doSync, int cpuCycles);
 static void dma_doHdma(Dma* dma, bool doSync, int cpuCycles);
 
 Dma* dma_init(Snes* snes) {
-  Dma* dma = new Dma;
+  Dma* dma = (Dma*)malloc(sizeof(Dma));
   dma->snes = snes;
   return dma;
 }

@@ -80,9 +80,10 @@ struct Dsp {
   int8_t firValues[8];
   int16_t firBufferL[8];
   int16_t firBufferR[8];
-  // sample ring buffer (1024 samples, *2 for stereo)
-  int16_t sampleBuffer[0x400 * 2];
+  // sample ring buffer (2048 samples, *2 for stereo)
+  int16_t sampleBuffer[0x800 * 2];
   uint16_t sampleOffset; // current offset in samplebuffer
+  uint32_t lastFrameBoundary;
 };
 
 Dsp* dsp_init(Apu* apu);
@@ -93,5 +94,6 @@ void dsp_cycle(Dsp* dsp);
 uint8_t dsp_read(Dsp* dsp, uint8_t adr);
 void dsp_write(Dsp* dsp, uint8_t adr, uint8_t val);
 void dsp_getSamples(Dsp* dsp, int16_t* sampleData, int samplesPerFrame);
+void dsp_newFrame(Dsp* dsp);
 
 #endif

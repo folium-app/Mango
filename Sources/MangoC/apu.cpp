@@ -11,20 +11,46 @@
 #include "dsp.h"
 #include "statehandler.h"
 
-static const uint8_t bootRom[0x40] = {
-  0xcd, 0xef, 0xbd, 0xe8, 0x00, 0xc6, 0x1d, 0xd0, 0xfc, 0x8f, 0xaa, 0xf4, 0x8f, 0xbb, 0xf5, 0x78,
-  0xcc, 0xf4, 0xd0, 0xfb, 0x2f, 0x19, 0xeb, 0xf4, 0xd0, 0xfc, 0x7e, 0xf4, 0xd0, 0x0b, 0xe4, 0xf5,
-  0xcb, 0xf4, 0xd7, 0x00, 0xfc, 0xd0, 0xf3, 0xab, 0x01, 0x10, 0xef, 0x7e, 0xf4, 0x10, 0xeb, 0xba,
-  0xf6, 0xda, 0x00, 0xba, 0xf4, 0xc4, 0xf4, 0xdd, 0x5d, 0xd0, 0xdb, 0x1f, 0x00, 0x00, 0xc0, 0xff
+static uint8_t bootRom[0x40]; // algorithmically constructed
+
+static const uint8_t iplDeltas[0x40] = {
+  0x18, 0x45, 0xeb, 0x61, 0x1c, 0x9a, 0xdc, 0x06, 0xa1, 0x26, 0x15, 0x07, 0x89, 0x96, 0xb8, 0xe2,
+  0xf5, 0xe1, 0x1e, 0xf1, 0xeb, 0x0a, 0xd2, 0xc0, 0xf7, 0x83, 0x7e, 0x60, 0x93, 0x40, 0x15, 0x46,
+  0x18, 0xf4, 0xdc, 0x7a, 0x31, 0x3d, 0x2d, 0x64, 0x30, 0xf8, 0x00, 0xcc, 0xa3, 0x67, 0x67, 0x23,
+  0xdc, 0xa2, 0x2f, 0xd7, 0xa6, 0x06, 0xd3, 0x84, 0xc4, 0xdc, 0xb8, 0x7f, 0x02, 0x86, 0x47, 0x6a,
 };
+
+static const double apuCyclesPerMaster = (32040 * 32) / (1364 * 262 * 60.0);
+static const double apuCyclesPerMasterPal = (32040 * 32) / (1364 * 312 * 50.0);
 
 static void apu_cycle(Apu* apu);
 
+static uint8_t ipl_lfsr(uint32_t posTo, int32_t arrayPos) {
+  uint32_t seed = 0xa5; // it's magic! (tm)
+  uint32_t pos = 0;
+  do {
+    if ((pos ^ arrayPos) == posTo) break;
+    seed = (seed * 1664525 + 1013904223) % 256;
+    pos++;
+  } while (1);
+  return seed;
+}
+
+static void ipl_create() {
+  uint8_t prev = 0;
+  for (int i = 0; i < 0x40; i++) {
+    prev = (prev - iplDeltas[i]) & 0xff;
+    bootRom[i] = ipl_lfsr(prev, i);
+    prev = iplDeltas[i];
+  }
+}
+
 Apu* apu_init(Snes* snes) {
-  Apu* apu = new Apu;
+  Apu* apu = (Apu*)malloc(sizeof(Apu));
   apu->snes = snes;
   apu->spc = spc_init(apu, apu_spcRead, apu_spcWrite, apu_spcIdle);
   apu->dsp = dsp_init(apu);
+  ipl_create();
   return apu;
 }
 
@@ -59,7 +85,7 @@ void apu_handleState(Apu* apu, StateHandler* sh) {
     &apu->dspAdr, &apu->inPorts[0], &apu->inPorts[1], &apu->inPorts[2], &apu->inPorts[3], &apu->inPorts[4],
     &apu->inPorts[5], &apu->outPorts[0], &apu->outPorts[1], &apu->outPorts[2], &apu->outPorts[3], NULL
   );
-  sh_handleInts(sh, &apu->cycles, NULL);
+  sh_handleLongLongs(sh, &apu->cycles, NULL);
   for(int i = 0; i < 3; i++) {
     sh_handleBools(sh, &apu->timer[i].enabled, NULL);
     sh_handleBytes(sh, &apu->timer[i].cycles, &apu->timer[i].divider, &apu->timer[i].target, &apu->timer[i].counter, NULL);
@@ -70,15 +96,12 @@ void apu_handleState(Apu* apu, StateHandler* sh) {
   dsp_handleState(apu->dsp, sh);
 }
 
-int apu_runCycles(Apu* apu, int wantedCycles) {
-  int runCycles = 0;
-  uint32_t startCycles = apu->cycles;
-  while(runCycles < wantedCycles) {
+void apu_runCycles(Apu* apu) {
+  uint64_t sync_to = (uint64_t)apu->snes->cycles * (apu->snes->palTiming ? apuCyclesPerMasterPal : apuCyclesPerMaster);
+
+  while (apu->cycles < sync_to) {
     spc_runOpcode(apu->spc);
-    runCycles += (uint32_t) (apu->cycles - startCycles);
-    startCycles = apu->cycles;
   }
-  return runCycles;
 }
 
 static void apu_cycle(Apu* apu) {
