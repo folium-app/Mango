@@ -166,7 +166,7 @@ void cx4_init(void *mem)
 		hash += cx4.rom[i];
 	}
 	if (hash != 0x169c91535) {
-		printf("CX4 rom generation failed (bad hash, %I64x)\n", hash);
+		printf("CX4 rom generation failed (bad hash, %lli)\n", hash);
 	}
 }
 
