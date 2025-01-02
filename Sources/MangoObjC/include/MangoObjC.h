@@ -33,9 +33,10 @@ typedef NS_ENUM(NSUInteger, SNESRomType) {
 
 -(SNESRomType) type;
 
--(int16_t*) audioBuffer;
--(uint8_t*) videoBuffer;
+-(int16_t* _Nullable) audioBuffer;
+-(uint8_t* _Nullable) videoBuffer;
 
+-(NSString *) regionForCartridgeAtURL:(NSURL *)url;
 -(NSString *) titleForCartridgeAtURL:(NSURL *)url;
 
 -(void) button:(int)button player:(int)player pressed:(BOOL)pressed;

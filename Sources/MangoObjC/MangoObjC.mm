@@ -12,8 +12,13 @@
 
 #include <memory>
 #include <vector>
+#include <iostream>
+#include <fstream>
+#include <stdexcept>
 
 Snes* mangoEmulator;
+int16_t* ab;
+uint8_t* fb = new uint8_t[512 * 480 * 4];
 
 static uint8_t* readFile(const char* name, long* length) {
     FILE* f = fopen(name, "rb");
@@ -29,6 +34,68 @@ static uint8_t* readFile(const char* name, long* length) {
     fclose(f);
     *length = size;
     return buffer;
+}
+
+std::string getSnesRegion(const std::string& romFilePath) {
+    // SNES ROM region byte offsets
+    const size_t LoROMOffset = 0xFFD9;
+    const size_t HiROMOffset = 0x7FD9;
+
+    std::ifstream romFile(romFilePath, std::ios::binary);
+    if (!romFile.is_open()) {
+        throw std::runtime_error("Failed to open the SNES ROM file");
+    }
+
+    // Determine file size
+    romFile.seekg(0, std::ios::end);
+    size_t fileSize = romFile.tellg();
+    romFile.seekg(0, std::ios::beg);
+
+    // Read the region byte
+    uint8_t regionByte;
+    if (fileSize > LoROMOffset) {
+        romFile.seekg(LoROMOffset);
+        romFile.read(reinterpret_cast<char*>(&regionByte), 1);
+    } else if (fileSize > HiROMOffset) {
+        romFile.seekg(HiROMOffset);
+        romFile.read(reinterpret_cast<char*>(&regionByte), 1);
+    } else {
+        throw std::runtime_error("ROM file size is too small to contain a valid SNES header");
+    }
+
+    // Interpret the region code
+    switch (regionByte) {
+        case 0x00:
+            return "Japan";
+        case 0x01:
+            return "USA";
+        case 0x02:
+            return "Europe";
+        case 0x03:
+            return "Sweden";
+        case 0x04:
+            return "Finland";
+        case 0x05:
+            return "Denmark";
+        case 0x06:
+            return "France";
+        case 0x07:
+            return "Netherlands";
+        case 0x08:
+            return "Spain";
+        case 0x09:
+            return "Germany";
+        case 0x0A:
+            return "Italy";
+        case 0x0B:
+            return "Hong Kong";
+        case 0x0C:
+            return "Indonesia";
+        case 0x0D:
+            return "South Korea";
+        default:
+            return "USA";
+    }
 }
 
 @implementation MangoObjC
@@ -48,16 +115,14 @@ static uint8_t* readFile(const char* name, long* length) {
 }
 
 -(void) insertCartridge:(NSURL *)url {
-    if (!mangoEmulator)
-        mangoEmulator = snes_init();
-    
     long length = 0;
     uint8_t* file = readFile([url.path UTF8String], &length);
     snes_loadRom(mangoEmulator, file, (int)length);
-    free(file);
     
     isPaused = FALSE;
     isRunning = TRUE;
+    
+    ab = new int16_t[48000 / (mangoEmulator->palTiming ? 50 : 60)];
 }
 
 -(void) reset {
@@ -90,16 +155,24 @@ static uint8_t* readFile(const char* name, long* length) {
     return mangoEmulator->palTiming ? SNESRomTypePAL : SNESRomTypeNTSC;
 }
 
--(int16_t *) audioBuffer {
-    static std::vector<int16_t> buffer(48000 / (mangoEmulator->palTiming ? 50 : 60));
-    snes_setSamples(mangoEmulator, buffer.data(), 48000 / (mangoEmulator->palTiming ? 50 : 60));
-    return buffer.data();
+-(int16_t* _Nullable) audioBuffer {
+    snes_setSamples(mangoEmulator, ab, 48000 / (mangoEmulator->palTiming ? 50 : 60));
+    if (ab)
+        return ab;
+    else
+        return nullptr;
 }
 
--(uint8_t *) videoBuffer {
-    static std::vector<uint8_t> buffer(512 * 480);
-    snes_setPixels(mangoEmulator, buffer.data());
-    return buffer.data();
+-(uint8_t* _Nullable) videoBuffer {
+    snes_setPixels(mangoEmulator, fb);
+    if (fb)
+        return fb;
+    else
+        return nullptr;
+}
+
+-(NSString *) regionForCartridgeAtURL:(NSURL *)url {
+    return [NSString stringWithCString:getSnesRegion([url.path UTF8String]).c_str() encoding:NSUTF8StringEncoding];
 }
 
 -(NSString *) titleForCartridgeAtURL:(NSURL *)url {

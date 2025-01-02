@@ -1147,20 +1147,20 @@ void ppu_write(Ppu* ppu, uint8_t adr, uint8_t val) {
 }
 
 void ppu_putPixels(Ppu* ppu, uint8_t* pixels) {
-  for(int y = 0; y < (ppu->frameOverscan ? 239 : 224); y++) {
-    int dest = y * 2 + (ppu->frameOverscan ? 2 : 16);
-    int y1 = y, y2 = y + 239;
-    if(!ppu->frameInterlace) {
-      y1 = y + (ppu->evenFrame ? 0 : 239);
-      y2 = y1;
+    for(int y = 0; y < (ppu->frameOverscan ? 239 : 224); y++) {
+        int dest = y * 2 + (ppu->frameOverscan ? 2 : 16);
+        int y1 = y, y2 = y + 239;
+        if(!ppu->frameInterlace) {
+            y1 = y + (ppu->evenFrame ? 0 : 239);
+            y2 = y1;
+        }
+        memcpy(pixels + (dest * 2048), &ppu->pixelBuffer[y1 * 2048], 2048);
+        memcpy(pixels + ((dest + 1) * 2048), &ppu->pixelBuffer[y2 * 2048], 2048);
     }
-    memcpy(pixels + (dest * 2048), &ppu->pixelBuffer[y1 * 2048], 2048);
-    memcpy(pixels + ((dest + 1) * 2048), &ppu->pixelBuffer[y2 * 2048], 2048);
-  }
-  // clear top 2 lines, and following 14 and last 16 lines if not overscanning
-  memset(pixels, 0, 2048 * 2);
-  if(!ppu->frameOverscan) {
-    memset(pixels + (2 * 2048), 0, 2048 * 14);
-    memset(pixels + (464 * 2048), 0, 2048 * 16);
-  }
+    // clear top 2 lines, and following 14 and last 16 lines if not overscanning
+    memset(pixels, 0, 2048 * 2);
+    if(!ppu->frameOverscan) {
+        memset(pixels + (2 * 2048), 0, 2048 * 14);
+        memset(pixels + (464 * 2048), 0, 2048 * 16);
+    }
 }

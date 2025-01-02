@@ -41,19 +41,23 @@ public struct Mango : @unchecked Sendable {
         mangoObjC.type()
     }
     
-    public func audioBuffer() -> UnsafeMutablePointer<Int16> {
+    public func audioBuffer() -> UnsafeMutablePointer<Int16>? {
         mangoObjC.audioBuffer()
     }
     
-    public func videoBuffer() -> UnsafeMutablePointer<UInt8> {
+    public func videoBuffer() -> UnsafeMutablePointer<UInt8>? {
         mangoObjC.videoBuffer()
+    }
+    
+    public func regionForCartridge(at url: URL) -> String {
+        mangoObjC.regionForCartridge(at: url)
     }
     
     public func titleForCartridge(at url: URL) -> String {
         mangoObjC.titleForCartridge(at: url)
     }
     
-    public func button(button: Int32, player: Int32, pressed: Bool) {
-        mangoObjC.button(button, player: player, pressed: pressed)
+    public func button(button: Int32, player: Int, pressed: Bool) {
+        mangoObjC.button(button, player: Int32(player), pressed: pressed)
     }
 }
