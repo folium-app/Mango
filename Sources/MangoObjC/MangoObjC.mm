@@ -205,7 +205,6 @@ std::string getSnesRegion(const std::string& romFilePath) {
         if(headers[i].score > max) {
             max = headers[i].score;
             used = i;
-            break;
         }
     }
     
