@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "dsp.h"
-#include "apu.h"
-#include "statehandler.h"
+#include "mango/dsp.h"
+#include "mango/apu.h"
+#include "mango/statehandler.h"
 
 static const int rateValues[32] = {
   0, 2048, 1536, 1280, 1024, 768, 640, 512,

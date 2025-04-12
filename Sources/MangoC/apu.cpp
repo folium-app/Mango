@@ -5,11 +5,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "apu.h"
-#include "snes.h"
-#include "spc.h"
-#include "dsp.h"
-#include "statehandler.h"
+#include "mango/apu.h"
+#include "mango/snes.h"
+#include "mango/spc.h"
+#include "mango/dsp.h"
+#include "mango/statehandler.h"
 
 static uint8_t bootRom[0x40]; // algorithmically constructed
 

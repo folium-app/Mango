@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "ppu.h"
-#include "snes.h"
-#include "statehandler.h"
+#include "mango/ppu.h"
+#include "mango/snes.h"
+#include "mango/statehandler.h"
 
 // array for layer definitions per mode:
 //   0-7: mode 0-7; 8: mode 1 + l3prio; 9: mode 7 + extbg

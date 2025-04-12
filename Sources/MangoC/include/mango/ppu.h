@@ -7,8 +7,8 @@
 
 typedef struct Ppu Ppu;
 
-#include "snes.h"
-#include "statehandler.h"
+#include "mango/snes.h"
+#include "mango/statehandler.h"
 
 typedef struct BgLayer {
   uint16_t hScroll;

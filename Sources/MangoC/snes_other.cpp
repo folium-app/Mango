@@ -5,11 +5,11 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "snes.h"
-#include "cart.h"
-#include "ppu.h"
-#include "dsp.h"
-#include "statehandler.h"
+#include "mango/snes.h"
+#include "mango/cart.h"
+#include "mango/ppu.h"
+#include "mango/dsp.h"
+#include "mango/statehandler.h"
 
 static const int stateVersion = 2;
 /*

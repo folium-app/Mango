@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "input.h"
-#include "snes.h"
-#include "statehandler.h"
+#include "mango/input.h"
+#include "mango/snes.h"
+#include "mango/statehandler.h"
 
 Input* input_init(Snes* snes) {
   Input* input = (Input*)malloc(sizeof(Input));

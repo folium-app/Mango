@@ -7,8 +7,8 @@
 
 typedef struct Dsp Dsp;
 
-#include "apu.h"
-#include "statehandler.h"
+#include "mango/apu.h"
+#include "mango/statehandler.h"
 
 typedef struct DspChannel {
   // pitch

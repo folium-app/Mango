@@ -5,9 +5,9 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "dma.h"
-#include "snes.h"
-#include "statehandler.h"
+#include "mango/dma.h"
+#include "mango/snes.h"
+#include "mango/statehandler.h"
 
 static const int bAdrOffsets[8][4] = {
   {0, 0, 0, 0},

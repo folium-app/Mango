@@ -23,8 +23,8 @@
 #include <stddef.h>
 #include <string.h>
 #include <math.h>
-#include "snes.h"
-#include "cx4.h"
+#include "mango/snes.h"
+#include "mango/cx4.h"
 
 #define DEBUG_STARTSTOP 0
 #define DEBUG_CACHE     0

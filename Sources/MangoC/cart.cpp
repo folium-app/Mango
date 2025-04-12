@@ -5,10 +5,10 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "cart.h"
-#include "snes.h"
-#include "statehandler.h"
-#include "cx4.h"
+#include "mango/cart.h"
+#include "mango/snes.h"
+#include "mango/statehandler.h"
+#include "mango/cx4.h"
 
 static uint8_t cart_readLorom(Cart* cart, uint8_t bank, uint16_t adr);
 static void cart_writeLorom(Cart* cart, uint8_t bank, uint16_t adr, uint8_t val);

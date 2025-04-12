@@ -7,8 +7,8 @@
 
 typedef struct Input Input;
 
-#include "snes.h"
-#include "statehandler.h"
+#include "mango/snes.h"
+#include "mango/statehandler.h"
 
 struct Input {
   Snes* snes;

@@ -7,8 +7,8 @@
 
 typedef struct Dma Dma;
 
-#include "snes.h"
-#include "statehandler.h"
+#include "mango/snes.h"
+#include "mango/statehandler.h"
 
 typedef struct DmaChannel {
   uint8_t bAdr;

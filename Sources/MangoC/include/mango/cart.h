@@ -7,8 +7,8 @@
 
 typedef struct Cart Cart;
 
-#include "snes.h"
-#include "statehandler.h"
+#include "mango/snes.h"
+#include "mango/statehandler.h"
 
 typedef struct CartHeader {
   // normal header

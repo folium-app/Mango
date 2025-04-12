@@ -7,8 +7,8 @@
 
 #import "MangoObjC.h"
 
-#include "cart.h"
-#include "snes.h"
+#include "mango/cart.h"
+#include "mango/snes.h"
 
 #include <memory>
 #include <vector>

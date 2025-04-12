@@ -5,8 +5,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "cpu.h"
-#include "statehandler.h"
+#include "mango/cpu.h"
+#include "mango/statehandler.h"
 
 static uint8_t cpu_read(Cpu* cpu, uint32_t adr);
 static void cpu_write(Cpu* cpu, uint32_t adr, uint8_t val);

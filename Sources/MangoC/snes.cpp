@@ -5,16 +5,16 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "snes.h"
-#include "cpu.h"
-#include "apu.h"
-#include "spc.h"
-#include "dma.h"
-#include "ppu.h"
-#include "cart.h"
-#include "cx4.h"
-#include "input.h"
-#include "statehandler.h"
+#include "mango/snes.h"
+#include "mango/cpu.h"
+#include "mango/apu.h"
+#include "mango/spc.h"
+#include "mango/dma.h"
+#include "mango/ppu.h"
+#include "mango/cart.h"
+#include "mango/cx4.h"
+#include "mango/input.h"
+#include "mango/statehandler.h"
 
 static void snes_runCycle(Snes* snes);
 static void snes_catchupApu(Snes* snes);

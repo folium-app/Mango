@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <stdarg.h>
 
-#include "statehandler.h"
+#include "mango/statehandler.h"
 
 static void sh_writeByte(StateHandler* sh, uint8_t val);
 static uint8_t sh_readByte(StateHandler* sh);

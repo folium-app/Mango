@@ -7,13 +7,13 @@
 
 typedef struct Snes Snes;
 
-#include "cpu.h"
-#include "apu.h"
-#include "dma.h"
-#include "ppu.h"
-#include "cart.h"
-#include "input.h"
-#include "statehandler.h"
+#include "mango/cpu.h"
+#include "mango/apu.h"
+#include "mango/dma.h"
+#include "mango/ppu.h"
+#include "mango/cart.h"
+#include "mango/input.h"
+#include "mango/statehandler.h"
 
 struct Snes {
   Cpu* cpu;

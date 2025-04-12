@@ -7,10 +7,10 @@
 
 typedef struct Apu Apu;
 
-#include "snes.h"
-#include "spc.h"
-#include "dsp.h"
-#include "statehandler.h"
+#include "mango/snes.h"
+#include "mango/spc.h"
+#include "mango/dsp.h"
+#include "mango/statehandler.h"
 
 typedef struct Timer {
   uint8_t cycles;
