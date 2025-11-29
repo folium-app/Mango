@@ -28,12 +28,13 @@ struct Object {
     Snes* mangoEmulator;
     SDL_AudioStream* stream;
     std::jthread thread;
-    std::atomic<bool> paused;
-    std::mutex mutex;
-    std::condition_variable_any cv;
     int16_t* ab;
     uint8_t* fb;
 } object;
+
+std::atomic<bool> paused;
+std::mutex mutex;
+std::condition_variable_any cv;
 
 static uint8_t* readFile(const char* name, long* length) {
     FILE* f = fopen(name, "rb");
@@ -152,7 +153,7 @@ std::string getSnesRegion(const std::string& romFilePath) {
     delete [] object.ab;
     delete [] object.fb;
     
-    object.paused.store(false);
+    paused.store(false);
 }
 
 -(void) start {
@@ -172,6 +173,8 @@ std::string getSnesRegion(const std::string& romFilePath) {
     if (object.stream)
         SDL_ResumeAudioStreamDevice(object.stream);
     
+    paused.store(false);
+    
     object.thread = std::jthread([&](std::stop_token token) {
         using namespace std::chrono;
 
@@ -180,9 +183,9 @@ std::string getSnesRegion(const std::string& romFilePath) {
 
         while (!token.stop_requested()) {
             {
-                std::unique_lock lock(object.mutex);
-                object.cv.wait(lock, token, []() {
-                    return !object.paused.load();
+                std::unique_lock lock(mutex);
+                cv.wait(lock, token, []() {
+                    return !paused.load();
                 });
                 
                 if (token.stop_requested())
@@ -204,7 +207,9 @@ std::string getSnesRegion(const std::string& romFilePath) {
 
             if (auto buffer = [[MangoEmulator sharedInstance] fb])
                 if (object.fb)
-                    buffer(object.fb);
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        buffer(object.fb);
+                    });
 
             // Limit FPS
             auto frameEnd = steady_clock::now();
@@ -215,12 +220,16 @@ std::string getSnesRegion(const std::string& romFilePath) {
     });
 }
 
+-(BOOL) isPaused {
+    return paused.load();
+}
+
 -(void) pause:(BOOL)pause {
     if (pause)
-        object.paused.store(true);
+        paused.store(true);
     else {
-        object.paused.store(false);
-        object.cv.notify_all();
+        paused.store(false);
+        cv.notify_all();
     }
 }
 

@@ -5,7 +5,7 @@
 //  Created by Jarrod Norwell on 4/8/2025.
 //
 
-public enum SNESControllerButton : Int32 {
+public enum SNESButton : Int32 {
     case b = 0
     case y = 1
     case select = 2
@@ -25,28 +25,43 @@ public actor Mango {
     
     public init() {}
     
-    public func insertCartridge(from url: URL) { emulator.insert(url) }
+    public func insert(_ cartridge: URL) {
+        emulator.insert(cartridge)
+    }
+    
+    public func start() {
+        emulator.start()
+    }
+    
+    public func stop() {
+        emulator.stop()
+    }
+    
+    public var isPaused: Bool {
+        get {
+            emulator.isPaused()
+        }
+        set {
+            pause(newValue)
+        }
+    }
+    
+    public func pause(_ pause: Bool) {
+        emulator.pause(pause)
+    }
     
     public var type: SNESRomType {
         emulator.type()
     }
     
-    public func fb(_ buffer: @escaping (UnsafeMutablePointer<UInt8>) -> Void) {
+    public func framebuffer(_ buffer: @escaping (UnsafeMutablePointer<UInt8>) -> Void) {
         emulator.fb = buffer
     }
     
     public func region(from url: URL) -> String { emulator.region(from: url) }
     public func title(at url: URL) -> String { emulator.title(from: url) }
     
-    public func button(button: Int32, player: Int, pressed: Bool) {
-        emulator.button(button, player: Int32(player), pressed: pressed)
+    public func button(button: SNESButton, player: Int, pressed: Bool) {
+        emulator.button(button.rawValue, player: Int32(player), pressed: pressed)
     }
-}
-
-extension Mango {
-    public func reset() { emulator.reset() }
-    public func start() { emulator.start() }
-    public func stop() { emulator.stop() }
-    
-    public func pause(_ pause: Bool) { emulator.pause(pause) }
 }

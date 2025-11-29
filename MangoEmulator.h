@@ -21,10 +21,9 @@ typedef NS_ENUM(NSUInteger, SNESRomType) {
 
 -(void) insertCartridge:(NSURL *)url NS_SWIFT_NAME(insert(_:));
 
--(void) reset;
--(void) stop;
 -(void) start;
-
+-(void) stop;
+-(BOOL) isPaused;
 -(void) pause:(BOOL)pause;
 
 -(SNESRomType) type;
