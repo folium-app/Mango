@@ -1,2 +1,2 @@
 # Mango
-Nintendo Entertainment System emulation provided via @jarrodnorwell's port of MesenCE by @nesdev-org and @sourmesen
+Nintendo Entertainment System emulation provided via [@jarrodnorwell](https://github.com/jarrodnorwell)'s port of MesenCE by [@nesdev-org](https://github.com/nesdev-org) and [@sourmesen](https://github.com/sourmesen)
