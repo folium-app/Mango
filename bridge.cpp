@@ -70,9 +70,6 @@ void mango::initialize_paths(void) {
 }
 
 void mango::initialize_system(void) {
-    FolderUtilities::SetHomeFolder(cntnr_m.mango_path.string());
-    FolderUtilities::SetFolderOverrides({}, {}, {}, cntnr_m.system_data_path);
-    
     auto mm{std::make_unique<iOSMessageManager>()};
     MessageManager::SetOptions(false, true);
     MessageManager::RegisterMessageManager(mm.get());
@@ -102,6 +99,9 @@ void mango::destroy_system(void) {
 
 
 void mango::insert_disc(std::string path) {
+    FolderUtilities::SetHomeFolder(cntnr_m.mango_path.string());
+    FolderUtilities::SetFolderOverrides({}, {}, {}, cntnr_m.system_data_path);
+    
     cntnr_m.emulator->LoadRom({path}, {});
     cntnr_m.emulator->RegisterInputProvider(cntnr_m.input.get());
 }
