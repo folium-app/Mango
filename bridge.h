@@ -36,4 +36,9 @@ void press_button(uint32_t), release_button(uint32_t);
 
 void* context;
 void set_context(void* context);
+
+
+bool save_state_exists(int);
+std::string save_state_path(int);
+void load_state(int), save_state(int);
 }

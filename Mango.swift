@@ -138,4 +138,21 @@ public actor MangoSystem {
 
         return "https://raw.githubusercontent.com/libretro/libretro-thumbnails/refs/heads/master/Nintendo - Nintendo Entertainment System/Named_Boxarts/\(title).png"
     }
+    
+    
+    public nonisolated func saveStatePath(for index: Int) -> String {
+        String(mango.save_state_path(Int32(index)))
+    }
+    
+    public func saveStateExists(for index: Int) -> Bool {
+        mango.save_state_exists(Int32(index))
+    }
+    
+    public func saveStateLoad(for index: Int) {
+        mango.load_state(Int32(index))
+    }
+    
+    public func saveStateSave(for index: Int) {
+        mango.save_state(Int32(index))
+    }
 }
